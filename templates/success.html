@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Booking Confirmed - CinemaOnline{% endblock %}
+
+{% block content %}
+<div class="success-container">
+    <div class="success-card">
+        <div class="success-icon">🎉</div>
+        <h1 style="color: var(--success-color); margin-bottom: 1rem;">Booking Confirmed!</h1>
+        <p class="text-muted" style="font-size: 1.1rem; margin-bottom: 2rem;">
+            Your cinema ticket has been successfully reserved
+        </p>
+        
+        <!-- Booking Details Grid -->
+        <div style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); padding: 1.5rem; border-radius: var(--radius-lg); margin: 2rem 0; text-align: left;">
+            <h3 class="text-gold mb-1">📋 Booking Details</h3>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <div>
+                    <strong style="color: var(--primary-color);">🎬 Movie:</strong><br>
+                    <span style="color: var(--accent-gold); font-weight: 600;">{{ movie }}</span>
+                </div>
+                <div>
+                    <strong style="color: var(--primary-color);">👤 Customer:</strong><br>
+                    <span style="font-weight: 500;">{{ username }}</span>
+                </div>
+                <div>
+                    <strong style="color: var(--primary-color);">🏢 Cinema:</strong><br>
+                    <span style="font-weight: 500;">{{ cinema }} - Hall {{ hall }}</span>
+                </div>
+                <div>
+                    <strong style="color: var(--primary-color);">🪑 Seat:</strong><br>
+                    <span style="font-weight: 600; color: var(--accent-gold);">{{ seat }}</span>
+                </div>
+                <div>
+                    <strong style="color: var(--primary-color);">📅 Date:</strong><br>
+                    <span style="font-weight: 500;">{{ show_date }}</span>
+                </div>
+                <div>
+                    <strong style="color: var(--primary-color);">🕐 Time:</strong><br>
+                    <span style="font-weight: 500;">{{ start_time }}</span>
+                </div>
+            </div>
+            
+            {% if price %}
+            <div style="background: var(--bg-card); padding: 1rem; border-radius: var(--radius-md); margin-top: 1rem; border: 2px solid var(--accent-gold);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span><strong>💰 Total Price:</strong></span>
+                    <span style="font-size: 1.2rem; font-weight: 700; color: var(--accent-gold);">${{ "%.2f"|format(price) }}</span>
+                </div>
+                <small style="color: var(--text-muted);">Status: Reserved (Complete payment at cinema)</small>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- QR Code Display -->
+        <div style="margin: 2rem 0;">
+            <h3 class="text-gold mb-1">🎫 Your Digital Ticket</h3>
+            <div class="qr-display">
+                <div style="text-align: center; margin-bottom: 1rem;">
+                    <div style="width: 150px; height: 150px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); 
+                                border: 3px solid var(--accent-gold); margin: 0 auto; display: flex; align-items: center; 
+                                justify-content: center; font-size: 4rem; border-radius: var(--radius-lg); color: var(--text-light);">
+                        📱
+                    </div>
+                    <p style="color: var(--text-muted); margin-top: 1rem; font-weight: 500;">
+                        Show this QR code at cinema entrance
+                    </p>
+                </div>
+                <div style="background: var(--bg-card); padding: 1rem; border-radius: var(--radius-md); border: 1px dashed var(--accent-gold);">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                        <strong>Ticket ID:</strong>
+                    </div>
+                    <div style="font-family: 'Courier New', monospace; font-size: 0.9rem; word-break: break-all; color: var(--primary-color); font-weight: 600;">
+                        {{ qr }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Important Information -->
+        <div style="background: linear-gradient(135deg, #fff3cd, #ffeaa7); border: 2px solid var(--warning-color); 
+                    padding: 1.5rem; border-radius: var(--radius-lg); margin: 2rem 0; text-align: left;">
+            <h4 style="color: #856404; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                📝 Important Information
+            </h4>
+            <ul style="color: #856404; margin: 0; padding-left: 1.5rem; line-height: 1.6;">
+                <li>Please arrive at least <strong>15 minutes before showtime</strong></li>
+                <li>Present this QR code at the cinema entrance for scanning</li>
+                <li>Keep your ticket safe - it cannot be replaced if lost</li>
+                <li>Ticket status: <strong>Reserved</strong> (Complete payment at cinema counter)</li>
+                <li>Contact cinema support if you need assistance: <strong>+98-21-1234-5678</strong></li>
+            </ul>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem;">
+            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                🎬 Book More Tickets
+            </a>
+            <button onclick="printTicket()" class="btn btn-secondary btn-lg">
+                🖨️ Print Ticket
+            </button>
+            {% if session['role'] == 'Staff' %}
+            <a href="{{ url_for('dashboard') }}" class="btn btn-success btn-lg">
+                📊 View Dashboard
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+function printTicket() {
+    const printContent = `
+        <div style="font-family: 'Inter', Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 30px; border: 2px solid #d4af37;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="color: #1a1a2e; margin-bottom: 5px;">🎬 CinemaOnline</h1>
+                <h2 style="color: #d4af37; margin: 0;">Cinema Ticket</h2>
+            </div>
+            <hr style="border: 1px solid #d4af37; margin: 20px 0;">
+            
+            <div style="margin-bottom: 20px;">
+                <p style="margin: 8px 0;"><strong>🎬 Movie:</strong> {{ movie }}</p>
+                <p style="margin: 8px 0;"><strong>👤 Customer:</strong> {{ username }}</p>
+                <p style="margin: 8px 0;"><strong>🏢 Cinema:</strong> {{ cinema }} - Hall {{ hall }}</p>
+                <p style="margin: 8px 0;"><strong>🪑 Seat:</strong> {{ seat }}</p>
+                <p style="margin: 8px 0;"><strong>📅 Date:</strong> {{ show_date }}</p>
+                <p style="margin: 8px 0;"><strong>🕐 Time:</strong> {{ start_time }}</p>
+                {% if price %}<p style="margin: 8px 0;"><strong>💰 Price:</strong> ${{ "%.2f"|format(price) }}</p>{% endif %}
+            </div>
+            
+            <hr style="border: 1px solid #d4af37; margin: 20px 0;">
+            
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="font-size: 12px; margin-bottom: 10px;"><strong>Ticket ID:</strong></p>
+                <p style="font-family: 'Courier New', monospace; font-size: 10px; word-break: break-all; margin: 0;">{{ qr }}</p>
+            </div>
+            
+            <hr style="border: 1px solid #d4af37; margin: 20px 0;">
+            
+            <div style="text-align: center; font-size: 12px; color: #666;">
+                <p style="margin: 5px 0;">Please arrive 15 minutes early</p>
+                <p style="margin: 5px 0;">Present this ticket at cinema entrance</p>
+                <p style="margin: 5px 0;">Status: Reserved - Pay at cinema</p>
+            </div>
+        </div>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Cinema Ticket - {{ movie }}</title>
+                <style>
+                    body { margin: 0; padding: 20px; }
+                    @media print { body { margin: 0; } }
+                </style>
+            </head>
+            <body>${printContent}</body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+    
+    // Show feedback
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = '✅ Sent to Printer!';
+    btn.style.background = 'var(--success-color)';
+    
+    setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '';
+    }, 3000);
+}
+
+// Celebration animation on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Add some confetti effect (simple version)
+    const successIcon = document.querySelector('.success-icon');
+    if (successIcon) {
+        successIcon.style.animation = 'bounce 1s ease-in-out';
+    }
+    
+    // Auto-scroll to top
+    window.scrollTo(0, 0);
+});
+</script>
+{% endblock %}

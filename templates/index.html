@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Movies - CinemaOnline{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2rem;">
+    <!-- Page Header -->
+    <div class="text-center mb-1">
+        <h1 class="text-gold">🎭 Available Movies</h1>
+        <p class="text-muted">Discover and book tickets for the latest Iranian and international films</p>
+    </div>
+    
+    <!-- Search and Filter Section -->
+    <div class="search-section">
+        <form action="{{ url_for('index') }}" method="GET" class="search-form">
+            <div class="form-group">
+                <input type="text" name="search" class="form-control" 
+                       placeholder="🔍 Search movies by title..." 
+                       value="{{ current_search or '' }}">
+            </div>
+            
+            <div class="form-group">
+                <select name="genre" class="form-control">
+                    <option value="">🎬 All Genres</option>
+                    {% for genre in genres %}
+                        <option value="{{ genre }}" {% if genre == current_genre %}selected{% endif %}>
+                            {{ genre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">Search</button>
+                {% if current_search or current_genre %}
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">Clear</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Movies Grid -->
+    <div class="movies-container">
+        {% if movies %}
+            {% for movie in movies %}
+            <div class="card movie-card">
+                <div class="movie-poster">
+                    🎬
+                </div>
+                
+                <div class="movie-info">
+                    <h3>{{ movie.Title }}</h3>
+                    <div class="movie-meta">
+                        <strong>⏱️ Duration:</strong> {{ movie.DurationMin }} minutes<br>
+                        <strong>🎯 Rating:</strong> {{ movie.AgeRating or 'Not Rated' }}
+                        {% if movie.Director %}
+                            <br><strong>🎬 Director:</strong> {{ movie.Director }}
+                        {% endif %}
+                    </div>
+                    
+                    {% if movie.Genre %}
+                        <div class="genre-tags">
+                            {% for genre in movie.Genre.split(', ') %}
+                                <span class="genre-tag">{{ genre }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="booking-section">
+                    {% if session['username'] %}
+                        <button class="btn btn-success btn-lg" 
+                                data-film-id="{{ movie.FilmID }}" 
+                                data-movie-title="{{ movie.Title }}"
+                                onclick="openBookingModal(this.dataset.filmId, this.dataset.movieTitle)">
+                            🎫 Book Ticket
+                        </button>
+                    {% else %}
+                        <a href="{{ url_for('login_page') }}" class="btn btn-primary btn-lg">
+                            🔐 Login to Book
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="card text-center" style="padding: 3rem;">
+                <h3 class="text-muted">🎭 No Movies Found</h3>
+                <p class="text-muted">
+                    {% if current_search or current_genre %}
+                        Try adjusting your search criteria or browse all movies.
+                    {% else %}
+                        No movies are currently available. Please check back later.
+                    {% endif %}
+                </p>
+                {% if current_search or current_genre %}
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">View All Movies</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Booking Modal -->
+{% if session['username'] %}
+<div id="bookingModal" class="modal">
+    <div class="modal-content">
+        <h3 id="modalMovieTitle" class="text-gold">🎫 Book Ticket</h3>
+        <form action="{{ url_for('book_ticket') }}" method="POST" id="bookingForm">
+            <input type="hidden" name="movie_title" id="movieTitleInput">
+            
+            <div class="form-group">
+                <label>🏢 Cinema & Showtime:</label>
+                <select name="showtime" id="showtimeSelect" class="form-control" required>
+                    <option value="">Loading showtimes...</option>
+                </select>
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>📍 Row Number:</label>
+                    <input type="number" name="row_no" class="form-control" min="1" max="10" value="1" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>🪑 Seat Number:</label>
+                    <input type="number" name="seat_no" class="form-control" min="1" max="20" required>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-1" style="margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-success">✅ Confirm Booking</button>
+                <button type="button" class="btn btn-secondary" onclick="hideModal('bookingModal')">❌ Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+let currentFilmId = null;
+
+function openBookingModal(filmId, movieTitle) {
+    currentFilmId = filmId;
+    document.getElementById('modalMovieTitle').textContent = '🎫 Book Ticket - ' + movieTitle;
+    document.getElementById('movieTitleInput').value = movieTitle;
+    showModal('bookingModal');
+    loadShowtimes(filmId);
+}
+
+function loadShowtimes(filmId) {
+    const select = document.getElementById('showtimeSelect');
+    showLoading(select);
+    select.innerHTML = '<option value="">Loading...</option>';
+    
+    fetch(`/get_showtimes/${filmId}`)
+        .then(response => response.json())
+        .then(data => {
+            hideLoading(select);
+            select.innerHTML = '<option value="">Select showtime...</option>';
+            
+            if (data.length === 0) {
+                select.innerHTML = '<option value="">No showtimes available</option>';
+                return;
+            }
+            
+            data.forEach(showtime => {
+                const option = document.createElement('option');
+                option.value = JSON.stringify({
+                    cinema_id: showtime.cinema_id,
+                    hall_number: showtime.hall_number,
+                    show_date: showtime.show_date,
+                    start_time: showtime.start_time
+                });
+                option.textContent = showtime.cinema_name + ' - Hall ' + showtime.hall_number + ' - ' + showtime.show_date + ' ' + showtime.start_time + ' ($' + showtime.price + ')';
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            hideLoading(select);
+            console.error('Error loading showtimes:', error);
+            select.innerHTML = '<option value="">Error loading showtimes</option>';
+        });
+}
+
+// Handle form submission
+document.getElementById('bookingForm').addEventListener('submit', function(e) {
+    const showtimeSelect = document.getElementById('showtimeSelect');
+    const rowInput = document.querySelector('input[name="row_no"]');
+    const seatInput = document.querySelector('input[name="seat_no"]');
+    
+    // Validate showtime selection
+    if (!showtimeSelect.value) {
+        e.preventDefault();
+        alert('Please select a showtime before booking.');
+        return false;
+    }
+    
+    // Validate seat inputs
+    if (!rowInput.value || !seatInput.value) {
+        e.preventDefault();
+        alert('Please enter both row and seat numbers.');
+        return false;
+    }
+    
+    // Parse and add showtime data
+    try {
+        const showtimeData = JSON.parse(showtimeSelect.value);
+        
+        // Remove any existing hidden inputs to avoid duplicates
+        const existingInputs = this.querySelectorAll('input[type="hidden"][name^="cinema"], input[type="hidden"][name^="hall"], input[type="hidden"][name^="show"]');
+        existingInputs.forEach(input => input.remove());
+        
+        // Add new hidden inputs
+        Object.keys(showtimeData).forEach(key => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = showtimeData[key];
+            this.appendChild(input);
+        });
+        
+        console.log('Form data being submitted:', new FormData(this));
+        
+    } catch (error) {
+        e.preventDefault();
+        console.error('Error parsing showtime data:', error);
+        alert('Invalid showtime data. Please select a showtime again.');
+        return false;
+    }
+});
+</script>
+{% endblock %}
